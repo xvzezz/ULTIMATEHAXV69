@@ -1,0 +1,245 @@
+--// Meme Hack Menu by NOTChatGPT 😎
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Feature toggles
+local ESP_ENABLED = false
+local AIMBOT_ENABLED = false
+local FLY_ENABLED = false
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))
+screenGui.Name = "MemeHackUI"
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 250, 0, 200)
+mainFrame.Position = UDim2.new(0, 50, 0, 50)
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.BorderSizePixel = 2
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "💀 ULTIMATE HAX V69 💀"
+title.Font = Enum.Font.Cartoon
+title.TextColor3 = Color3.fromRGB(0, 255, 0)
+title.TextStrokeTransparency = 0
+title.TextSize = 20
+
+-- Toggle helper
+local function createToggle(yPos, labelText, toggleFunc)
+	local button = Instance.new("TextButton", mainFrame)
+	button.Size = UDim2.new(1, -20, 0, 30)
+	button.Position = UDim2.new(0, 10, 0, yPos)
+	button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	button.Text = labelText .. " ❌"
+	button.Font = Enum.Font.Cartoon
+	button.TextSize = 16
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+	local enabled = false
+	button.MouseButton1Click:Connect(function()
+		enabled = not enabled
+		button.Text = labelText .. (enabled and "✅" or " ❌")
+		toggleFunc(enabled)
+	end)
+end
+
+-- ESP
+local espBoxes = {}
+
+local function toggleESP(state)
+	ESP_ENABLED = state
+	if not state then
+		for _, box in pairs(espBoxes) do
+			box.box:Remove()
+			box.health:Remove()
+		end
+		espBoxes = {}
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	if ESP_ENABLED then
+		for _, box in pairs(espBoxes) do
+			box.box:Remove()
+			box.health:Remove()
+		end
+		espBoxes = {}
+
+		for _, player in pairs(Players:GetPlayers()) do
+			if player ~= localPlayer and player.Character
+				and player.Character:FindFirstChild("HumanoidRootPart")
+				and player.Character:FindFirstChild("Head")
+				and player.Character:FindFirstChild("Humanoid") then
+
+				local hrp = player.Character.HumanoidRootPart
+				local head = player.Character.Head
+				local humanoid = player.Character.Humanoid
+				local distance = (hrp.Position - camera.CFrame.Position).Magnitude
+
+				if distance <= 300 and humanoid.Health > 0 then
+					local screenPos, onScreen = camera:WorldToViewportPoint(hrp.Position)
+					if onScreen then
+						local height = (hrp.Position.Y - head.Position.Y) * 2.5
+						local width = height / 2
+
+						local scale = 1 / distance * 100
+						local boxHeight = height * scale * 10
+						local boxWidth = width * scale * 10
+
+						local box = Drawing.new("Square")
+						box.Size = Vector2.new(boxWidth, boxHeight)
+						box.Position = Vector2.new(screenPos.X - boxWidth / 2, screenPos.Y - boxHeight / 2)
+						box.Color = Color3.new(1, 0, 0)
+						box.Thickness = 2
+						box.Filled = false
+						box.Visible = true
+
+						local healthBar = Drawing.new("Line")
+						local healthPercent = humanoid.Health / humanoid.MaxHealth
+						local barWidth = boxWidth * healthPercent
+						local barStart = Vector2.new(box.Position.X, box.Position.Y - 5)
+						local barEnd = Vector2.new(box.Position.X + barWidth, box.Position.Y - 5)
+
+						healthBar.From = barStart
+						healthBar.To = barEnd
+						healthBar.Color = Color3.new(0, 1, 0)
+						healthBar.Thickness = 4
+						healthBar.Visible = true
+
+						table.insert(espBoxes, {box = box, health = healthBar})
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- FLY
+local bodyGyro, bodyVelocity
+
+local function fly(state)
+	FLY_ENABLED = state
+	local character = localPlayer.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+
+	if state and root then
+		bodyGyro = Instance.new("BodyGyro")
+		bodyGyro.P = 9e4
+		bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+		bodyGyro.CFrame = root.CFrame
+		bodyGyro.Parent = root
+
+		bodyVelocity = Instance.new("BodyVelocity")
+		bodyVelocity.Velocity = Vector3.zero
+		bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+		bodyVelocity.Parent = root
+	else
+		if bodyGyro then bodyGyro:Destroy() end
+		if bodyVelocity then bodyVelocity:Destroy() end
+	end
+end
+
+RunService.RenderStepped:Connect(function()
+	if FLY_ENABLED and bodyVelocity and bodyGyro then
+		local cam = workspace.CurrentCamera
+		local direction = Vector3.zero
+
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then direction += cam.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then direction -= cam.CFrame.LookVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then direction -= cam.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then direction += cam.CFrame.RightVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then direction += cam.CFrame.UpVector end
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then direction -= cam.CFrame.UpVector end
+
+		bodyVelocity.Velocity = direction.Magnitude > 0 and direction.Unit * 50 or Vector3.zero
+		bodyGyro.CFrame = cam.CFrame
+	end
+end)
+
+-- AIMBOT
+local fovRadius = 150
+local aiming = false
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 2
+fovCircle.Radius = fovRadius
+fovCircle.Filled = false
+fovCircle.Visible = false
+fovCircle.Color = Color3.new(1, 0, 0)
+
+local function getClosestTarget()
+	local closestPlayer = nil
+	local shortestDistance = fovRadius
+	local mousePos = UserInputService:GetMouseLocation()
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+			local head = player.Character.Head
+			local screenPoint, onScreen = camera:WorldToViewportPoint(head.Position)
+			if onScreen then
+				local dist = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
+				if dist < shortestDistance then
+					shortestDistance = dist
+					closestPlayer = player
+				end
+			end
+		end
+	end
+	return closestPlayer
+end
+
+local function aimAt(part)
+	if not part then return end
+	local origin = camera.CFrame.Position
+	local targetPos = part.Position
+	local newCF = CFrame.new(origin, targetPos)
+	camera.CFrame = camera.CFrame:Lerp(newCF, 0.15)
+end
+
+UserInputService.InputBegan:Connect(function(input)
+	if AIMBOT_ENABLED and input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aiming = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aiming = false
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	fovCircle.Visible = AIMBOT_ENABLED
+	fovCircle.Position = UserInputService:GetMouseLocation()
+
+	if AIMBOT_ENABLED and aiming then
+		local target = getClosestTarget()
+		if target and target.Character and target.Character:FindFirstChild("Head") then
+			aimAt(target.Character.Head)
+		end
+	end
+end)
+
+-- GUI buttons
+createToggle(40, "Wallhax 🔥", toggleESP)
+createToggle(80, "Aimbot 9000 🎯", function(state) AIMBOT_ENABLED = state end)
+createToggle(120, "Air Jesus ✈️", fly)
+
+-- GUI toggle with RightShift
+local menuVisible = true
+UserInputService.InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		menuVisible = not menuVisible
+		mainFrame.Visible = menuVisible
+	end
+end)
